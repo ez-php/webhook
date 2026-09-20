@@ -23,10 +23,12 @@ final readonly class WebhookDispatcher
      *
      * @param QueueInterface $queue
      * @param string         $queueName Queue to push delivery jobs onto.
+     * @param bool           $timestamped Send a timestamp header and sign `"{timestamp}.{body}"` (replay protection).
      */
     public function __construct(
         private QueueInterface $queue,
         private string $queueName = 'default',
+        private bool $timestamped = false,
     ) {
     }
 
@@ -46,6 +48,6 @@ final readonly class WebhookDispatcher
         string $secret,
         string $signatureHeader = 'X-Webhook-Signature',
     ): void {
-        $this->queue->push(new DeliverWebhookJob($url, $payload, $secret, $signatureHeader, $this->queueName));
+        $this->queue->push(new DeliverWebhookJob($url, $payload, $secret, $signatureHeader, $this->queueName, $this->timestamped));
     }
 }

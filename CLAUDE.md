@@ -175,8 +175,8 @@ Two things stay manual on purpose:
 - **`CLAUDE.md` part 1** — only the `# Package:` section is generated. Run
   `composer guidelines:sync` afterwards; baking a guidelines copy into the generator
   would recreate the drift the sync script exists to prevent.
-- **The host-port table below** (`--services` only) — editing it marks all ~40
-  `CLAUDE.md` copies as drifted at once, so the next `composer full` would fail for
+- **The host-port table below** (`--services` only) — editing it marks every
+  `CLAUDE.md` copy as drifted at once, so the next `composer full` would fail for
   a brand-new module. The generator prints which ports to claim instead.
 
 ### 4 — Docker scaffold
@@ -327,8 +327,9 @@ with an injected `WebhookSigner`, and returns `401 Unauthorized` (via
 Reads `config/webhook.php`. Binds `WebhookSigner` (stateless, no config
 needed), `WebhookDispatcher` (resolves `QueueInterface` — must already be
 bound, e.g. by `ez-php/queue`'s `QueueServiceProvider`, registered first — and
-`webhook.queue`, default `'default'`), and `VerifyWebhookSignatureMiddleware`
-(`webhook.secret`, `webhook.signature_header`). All bindings are lazy
+`webhook.queue`, default `'default'`; `webhook.timestamped`, default `false`), and
+`VerifyWebhookSignatureMiddleware` (`webhook.secret`, `webhook.signature_header`,
+`webhook.tolerance`, `0`/unset = plain signatures). All bindings are lazy
 closures; `register()` never calls `make()` on another service.
 
 ---
@@ -357,6 +358,8 @@ closures; `register()` never calls `make()` on another service.
 ---
 
 ## What Does NOT Belong Here
+
+**Replay protection is opt-in and symmetric.** `WebhookSigner::signWithTimestamp()`/`verifyWithTimestamp()` sign `"{timestamp}.{body}"`; `DeliverWebhookJob` (`$timestamped`) sends `X-Webhook-Timestamp` and the middleware (`$toleranceSeconds`) enforces the window. The default stays the plain body HMAC so existing integrations keep verifying. The timestamp is taken in `handle()`, not at dispatch, so queue delay and retries never produce a stale timestamp. It bounds replay, it does not deduplicate — event-id idempotency stays with the application.
 
 | Concern | Where it belongs |
 |---|---|

@@ -28,9 +28,13 @@ Add config values to `config/webhook.php`:
 
 ```php
 return [
-    'secret'            => env('WEBHOOK_SECRET', ''),
-    'signature_header'  => env('WEBHOOK_SIGNATURE_HEADER', 'X-Webhook-Signature'),
-    'queue'             => env('WEBHOOK_QUEUE', 'default'),
+    'secret'            => getenv('WEBHOOK_SECRET') ?: '',
+    'signature_header'  => getenv('WEBHOOK_SIGNATURE_HEADER') ?: 'X-Webhook-Signature',
+    'queue'             => getenv('WEBHOOK_QUEUE') ?: 'default',
+
+    // Replay protection (opt-in, see "Replay protection" below).
+    'timestamped'       => filter_var(getenv('WEBHOOK_TIMESTAMPED'), FILTER_VALIDATE_BOOLEAN), // sender
+    'tolerance'         => (int) (getenv('WEBHOOK_TOLERANCE') ?: 0),                            // receiver, seconds; 0 = off
 ];
 ```
 
@@ -91,6 +95,15 @@ $signer->verify($rawBody, $signature, $secret);        // bool, constant-time
 ```
 
 Sign and verify against the exact same bytes (the raw JSON string, not a re-encoded array) — re-encoding can reorder keys or change whitespace and break verification even though the data is unchanged.
+
+### Replay protection
+
+A plain signature covers only the body, so a captured delivery can be re-sent later and still verify. Both sides can opt in to signing a timestamp too:
+
+- **Sender:** `webhook.timestamped = true` (or `new WebhookDispatcher($queue, $queueName, timestamped: true)`) adds an `X-Webhook-Timestamp` header and signs `"{timestamp}.{body}"`. The timestamp is taken on every delivery attempt, so a retry after a long backoff is not stale.
+- **Receiver:** `webhook.tolerance = 300` (or `new VerifyWebhookSignatureMiddleware($signer, $secret, toleranceSeconds: 300)`) requires the timestamp header, verifies `"{timestamp}.{body}"` and rejects deliveries more than `tolerance` seconds away from the server clock with `401`.
+
+Both sides must agree — a timestamped sender talking to a plain receiver (or the reverse) fails verification. Timestamps only bound the replay window; deduplicate by event id if you need exactly-once handling.
 
 ---
 

@@ -48,4 +48,47 @@ final class WebhookSigner
     {
         return hash_equals($this->sign($payload, $secret), $signature);
     }
+
+    /**
+     * Sign a payload together with a Unix timestamp (`"{timestamp}.{payload}"`), so a captured
+     * delivery cannot be replayed outside the receiver's tolerance window.
+     *
+     * @param string $payload   Raw request body bytes.
+     * @param string $secret    Shared signing secret.
+     * @param int    $timestamp Unix timestamp sent alongside the signature.
+     *
+     * @return string Lowercase hex-encoded signature.
+     */
+    public function signWithTimestamp(string $payload, string $secret, int $timestamp): string
+    {
+        return $this->sign($timestamp . '.' . $payload, $secret);
+    }
+
+    /**
+     * Verify a timestamped signature and reject it when the timestamp is more than
+     * `$toleranceSeconds` away from `$now` (in either direction).
+     *
+     * @param string   $payload          Raw request body bytes.
+     * @param string   $signature        Hex-encoded signature to verify.
+     * @param string   $secret           Shared signing secret.
+     * @param int      $timestamp        Unix timestamp the sender claims.
+     * @param int      $toleranceSeconds Maximum accepted clock difference.
+     * @param int|null $now              Current Unix time; defaults to `time()`.
+     *
+     * @return bool
+     */
+    public function verifyWithTimestamp(
+        string $payload,
+        string $signature,
+        string $secret,
+        int $timestamp,
+        int $toleranceSeconds,
+        ?int $now = null,
+    ): bool {
+        if (abs(($now ?? time()) - $timestamp) > $toleranceSeconds) {
+            return false;
+        }
+
+        return hash_equals($this->signWithTimestamp($payload, $secret, $timestamp), $signature);
+    }
 }

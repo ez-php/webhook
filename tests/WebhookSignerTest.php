@@ -57,4 +57,36 @@ final class WebhookSignerTest extends BaseTestCase
     {
         $this->assertFalse($this->signer->verify('payload', 'not-a-signature', 'secret'));
     }
+
+    public function test_timestamped_signature_round_trips_within_tolerance(): void
+    {
+        $signer = new WebhookSigner();
+        $signature = $signer->signWithTimestamp('{"a":1}', 'secret', 1000);
+
+        $this->assertTrue($signer->verifyWithTimestamp('{"a":1}', $signature, 'secret', 1000, 300, 1200));
+        $this->assertTrue($signer->verifyWithTimestamp('{"a":1}', $signature, 'secret', 1000, 300, 800));
+    }
+
+    public function test_timestamped_signature_is_rejected_outside_tolerance(): void
+    {
+        $signer = new WebhookSigner();
+        $signature = $signer->signWithTimestamp('{"a":1}', 'secret', 1000);
+
+        $this->assertFalse($signer->verifyWithTimestamp('{"a":1}', $signature, 'secret', 1000, 300, 1301));
+    }
+
+    public function test_timestamp_is_part_of_the_signed_message(): void
+    {
+        $signer = new WebhookSigner();
+        $signature = $signer->signWithTimestamp('{"a":1}', 'secret', 1000);
+
+        $this->assertFalse($signer->verifyWithTimestamp('{"a":1}', $signature, 'secret', 1001, 300, 1001));
+    }
+
+    public function test_plain_signature_does_not_verify_as_timestamped(): void
+    {
+        $signer = new WebhookSigner();
+
+        $this->assertFalse($signer->verifyWithTimestamp('{"a":1}', $signer->sign('{"a":1}', 'secret'), 'secret', 1000, 300, 1000));
+    }
 }

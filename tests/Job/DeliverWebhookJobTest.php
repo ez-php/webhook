@@ -88,4 +88,34 @@ final class DeliverWebhookJobTest extends BaseTestCase
 
         $this->assertSame('webhooks', $job->getQueue());
     }
+
+    public function test_timestamped_delivery_sends_timestamp_and_signs_it(): void
+    {
+        Http::fake(['*' => Http::response(['ok' => true], 200)]);
+
+        $job = new DeliverWebhookJob('https://example.com/hook', ['event' => 'created'], 'secret', timestamped: true);
+        $job->handle();
+
+        $body = (string) json_encode(['event' => 'created']);
+
+        Http::assertSent(function (string $method, string $url, array $headers, string $sent) use ($body): bool {
+            $timestamp = $headers['X-Webhook-Timestamp'] ?? null;
+
+            return is_string($timestamp)
+                && abs(time() - (int) $timestamp) <= 5
+                && ($headers['X-Webhook-Signature'] ?? null) === (new WebhookSigner())->signWithTimestamp($body, 'secret', (int) $timestamp)
+                && $sent === $body;
+        });
+        $this->addToAssertionCount(1);
+    }
+
+    public function test_default_delivery_sends_no_timestamp(): void
+    {
+        Http::fake(['*' => Http::response(['ok' => true], 200)]);
+
+        (new DeliverWebhookJob('https://example.com/hook', [], 'secret'))->handle();
+
+        Http::assertSent(fn (string $method, string $url, array $headers): bool => !array_key_exists('X-Webhook-Timestamp', $headers));
+        $this->addToAssertionCount(1);
+    }
 }

@@ -83,4 +83,60 @@ final class VerifyWebhookSignatureMiddlewareTest extends BaseTestCase
 
         $this->assertSame(200, $response->status());
     }
+
+    private function timestampedRequest(string $payload, ?int $timestamp, ?string $signature = null): Request
+    {
+        $headers = [];
+
+        if ($timestamp !== null) {
+            $headers['x-webhook-timestamp'] = (string) $timestamp;
+            $headers['x-webhook-signature'] = $signature ?? (new WebhookSigner())->signWithTimestamp($payload, 'secret', $timestamp);
+        }
+
+        return new Request('POST', '/webhooks/incoming', rawBody: $payload, headers: $headers);
+    }
+
+    public function test_accepts_fresh_timestamped_signature(): void
+    {
+        $middleware = new VerifyWebhookSignatureMiddleware(new WebhookSigner(), 'secret', toleranceSeconds: 300);
+
+        $response = $middleware->handle($this->timestampedRequest('{"e":1}', time()), fn () => new Response('ok'));
+
+        $this->assertSame(200, $response->status());
+    }
+
+    public function test_rejects_replayed_stale_timestamp(): void
+    {
+        $middleware = new VerifyWebhookSignatureMiddleware(new WebhookSigner(), 'secret', toleranceSeconds: 300);
+
+        $response = $middleware->handle($this->timestampedRequest('{"e":1}', time() - 3600), fn () => new Response('ok'));
+
+        $this->assertSame(401, $response->status());
+    }
+
+    public function test_rejects_missing_timestamp_when_tolerance_is_enabled(): void
+    {
+        $signer = new WebhookSigner();
+        $middleware = new VerifyWebhookSignatureMiddleware($signer, 'secret', toleranceSeconds: 300);
+        $request = new Request(
+            'POST',
+            '/webhooks/incoming',
+            rawBody: '{"e":1}',
+            headers: ['x-webhook-signature' => $signer->sign('{"e":1}', 'secret')],
+        );
+
+        $response = $middleware->handle($request, fn () => new Response('ok'));
+
+        $this->assertSame(401, $response->status());
+    }
+
+    public function test_rejects_refreshed_timestamp_with_old_signature(): void
+    {
+        $middleware = new VerifyWebhookSignatureMiddleware(new WebhookSigner(), 'secret', toleranceSeconds: 300);
+        $old = (new WebhookSigner())->signWithTimestamp('{"e":1}', 'secret', time() - 3600);
+
+        $response = $middleware->handle($this->timestampedRequest('{"e":1}', time(), $old), fn () => new Response('ok'));
+
+        $this->assertSame(401, $response->status());
+    }
 }

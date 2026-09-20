@@ -33,7 +33,11 @@ final class WebhookServiceProvider extends ServiceProvider
             /** @var string $queue */
             $queue = $config->get('webhook.queue', 'default');
 
-            return new WebhookDispatcher($this->app->make(QueueInterface::class), $queue);
+            return new WebhookDispatcher(
+                $this->app->make(QueueInterface::class),
+                $queue,
+                $config->get('webhook.timestamped', false) === true,
+            );
         });
 
         $this->app->bind(VerifyWebhookSignatureMiddleware::class, function (): VerifyWebhookSignatureMiddleware {
@@ -44,7 +48,14 @@ final class WebhookServiceProvider extends ServiceProvider
             /** @var string $header */
             $header = $config->get('webhook.signature_header', 'X-Webhook-Signature');
 
-            return new VerifyWebhookSignatureMiddleware($this->app->make(WebhookSigner::class), $secret, $header);
+            $tolerance = $config->get('webhook.tolerance', 0);
+
+            return new VerifyWebhookSignatureMiddleware(
+                $this->app->make(WebhookSigner::class),
+                $secret,
+                $header,
+                is_int($tolerance) && $tolerance > 0 ? $tolerance : null,
+            );
         });
     }
 

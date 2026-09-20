@@ -33,6 +33,8 @@ final class DeliverWebhookJob extends Job
      * @param string               $secret       Shared signing secret for this subscriber.
      * @param string               $signatureHeader Header name the signature is sent under.
      * @param string               $queue        Queue to dispatch this job to.
+     * @param bool                 $timestamped  Sign `"{timestamp}.{body}"` and send the timestamp header (replay protection).
+     * @param string               $timestampHeader Header name the Unix timestamp is sent under.
      */
     public function __construct(
         private readonly string $url,
@@ -40,6 +42,8 @@ final class DeliverWebhookJob extends Job
         private readonly string $secret,
         private readonly string $signatureHeader = 'X-Webhook-Signature',
         string $queue = 'default',
+        private readonly bool $timestamped = false,
+        private readonly string $timestampHeader = 'X-Webhook-Timestamp',
     ) {
         $this->queue = $queue;
     }
@@ -54,13 +58,21 @@ final class DeliverWebhookJob extends Job
     public function handle(): void
     {
         $body = (string) json_encode($this->payload, JSON_THROW_ON_ERROR);
-        $signature = (new WebhookSigner())->sign($body, $this->secret);
+        $signer = new WebhookSigner();
 
-        $response = Http::post($this->url)
-            ->withHeader('Content-Type', 'application/json')
-            ->withHeader($this->signatureHeader, $signature)
-            ->withBody($body)
-            ->send();
+        $request = Http::post($this->url)->withHeader('Content-Type', 'application/json');
+
+        if ($this->timestamped) {
+            // Signed per attempt, so a retry after a long backoff is not rejected as stale.
+            $timestamp = time();
+            $request = $request
+                ->withHeader($this->timestampHeader, (string) $timestamp)
+                ->withHeader($this->signatureHeader, $signer->signWithTimestamp($body, $this->secret, $timestamp));
+        } else {
+            $request = $request->withHeader($this->signatureHeader, $signer->sign($body, $this->secret));
+        }
+
+        $response = $request->withBody($body)->send();
 
         if ($response->status() < 200 || $response->status() >= 300) {
             throw new WebhookException(sprintf(
