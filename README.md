@@ -72,13 +72,14 @@ Wire `VerifyWebhookSignatureMiddleware` in front of the route that receives webh
 
 ```php
 use EzPhp\Webhook\Middleware\VerifyWebhookSignatureMiddleware;
-use EzPhp\Webhook\WebhookSigner;
 
 $router->post('/webhooks/incoming', [IncomingWebhookController::class, 'handle'])
-    ->middleware(new VerifyWebhookSignatureMiddleware(new WebhookSigner(), secret: 'shared-secret'));
+    ->middleware(VerifyWebhookSignatureMiddleware::class);
 ```
 
-Or resolve it from the container (reads `webhook.secret`/`webhook.signature_header`) when `WebhookServiceProvider` is registered.
+Middleware is registered by class name and resolved from the container. `WebhookServiceProvider`
+binds `VerifyWebhookSignatureMiddleware` with `webhook.secret`, `webhook.signature_header` and
+`webhook.tolerance` from config, so register the provider and set `WEBHOOK_SECRET`.
 
 A request with a missing or invalid signature never reaches the controller — the middleware returns `401 Unauthorized` directly.
 

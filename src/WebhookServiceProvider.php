@@ -30,8 +30,7 @@ final class WebhookServiceProvider extends ServiceProvider
         $this->app->bind(WebhookDispatcher::class, function (): WebhookDispatcher {
             $config = $this->app->make(ConfigInterface::class);
 
-            /** @var string $queue */
-            $queue = $config->get('webhook.queue', 'default');
+            $queue = self::configString($config, 'webhook.queue', 'default');
 
             return new WebhookDispatcher(
                 $this->app->make(QueueInterface::class),
@@ -43,10 +42,8 @@ final class WebhookServiceProvider extends ServiceProvider
         $this->app->bind(VerifyWebhookSignatureMiddleware::class, function (): VerifyWebhookSignatureMiddleware {
             $config = $this->app->make(ConfigInterface::class);
 
-            /** @var string $secret */
-            $secret = $config->get('webhook.secret', '');
-            /** @var string $header */
-            $header = $config->get('webhook.signature_header', 'X-Webhook-Signature');
+            $secret = self::configString($config, 'webhook.secret', '');
+            $header = self::configString($config, 'webhook.signature_header', 'X-Webhook-Signature');
 
             $tolerance = $config->get('webhook.tolerance', 0);
 
@@ -64,5 +61,21 @@ final class WebhookServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+    }
+
+    /**
+     * Read a string config value, falling back to $default when it is missing or not a string.
+     *
+     * @param ConfigInterface $config
+     * @param string          $key
+     * @param string          $default
+     *
+     * @return string
+     */
+    private static function configString(ConfigInterface $config, string $key, string $default): string
+    {
+        $value = $config->get($key, $default);
+
+        return is_string($value) ? $value : $default;
     }
 }
