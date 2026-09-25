@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use EzPhp\Application\Application;
+use EzPhp\Testing\ApplicationTestCase;
 use EzPhp\Webhook\Middleware\VerifyWebhookSignatureMiddleware;
 use EzPhp\Webhook\WebhookDispatcher;
 use EzPhp\Webhook\WebhookServiceProvider;
@@ -23,7 +24,7 @@ use Tests\Fixtures\InMemoryQueueServiceProvider;
 #[UsesClass(WebhookSigner::class)]
 #[UsesClass(WebhookDispatcher::class)]
 #[UsesClass(VerifyWebhookSignatureMiddleware::class)]
-final class WebhookServiceProviderTest extends TestCase
+final class WebhookServiceProviderTest extends ApplicationTestCase
 {
     /**
      * @param Application $app

@@ -1,6 +1,6 @@
 {
     "name": "ez-php/webhook",
-    "version": "2.5.0",
+    "version": "2.5.1",
     "description": "Outgoing webhooks for the ez-php framework — HMAC-signed delivery as a retrying queue job, plus middleware to verify incoming webhook signatures",
     "type": "library",
     "license": "MIT",
