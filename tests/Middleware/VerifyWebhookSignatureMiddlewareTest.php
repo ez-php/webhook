@@ -7,6 +7,7 @@ namespace Tests\Middleware;
 use EzPhp\Http\Request;
 use EzPhp\Http\Response;
 use EzPhp\Webhook\Middleware\VerifyWebhookSignatureMiddleware;
+use EzPhp\Webhook\WebhookException;
 use EzPhp\Webhook\WebhookSigner;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
@@ -17,8 +18,55 @@ use PHPUnit\Framework\TestCase as BaseTestCase;
  */
 #[CoversClass(VerifyWebhookSignatureMiddleware::class)]
 #[UsesClass(WebhookSigner::class)]
+#[UsesClass(WebhookException::class)]
 final class VerifyWebhookSignatureMiddlewareTest extends BaseTestCase
 {
+    public function test_empty_secret_rejects_a_request_signed_with_the_empty_key(): void
+    {
+        $signer = new WebhookSigner();
+        $payload = '{"event":"created"}';
+        $middleware = new VerifyWebhookSignatureMiddleware($signer, '');
+        $request = new Request(
+            'POST',
+            '/webhooks/incoming',
+            rawBody: $payload,
+            headers: ['x-webhook-signature' => $signer->sign($payload, '')],
+        );
+        $called = false;
+
+        try {
+            $middleware->handle($request, function () use (&$called): Response {
+                $called = true;
+
+                return new Response('ok');
+            });
+            $this->fail('An empty secret must not verify any request.');
+        } catch (WebhookException) {
+            $this->assertFalse($called);
+        }
+    }
+
+    public function test_empty_secret_rejects_timestamped_requests_too(): void
+    {
+        $signer = new WebhookSigner();
+        $payload = '{"event":"created"}';
+        $timestamp = time();
+        $middleware = new VerifyWebhookSignatureMiddleware($signer, '', toleranceSeconds: 300);
+        $request = new Request(
+            'POST',
+            '/webhooks/incoming',
+            rawBody: $payload,
+            headers: [
+                'x-webhook-signature' => $signer->signWithTimestamp($payload, '', $timestamp),
+                'x-webhook-timestamp' => (string) $timestamp,
+            ],
+        );
+
+        $this->expectException(WebhookException::class);
+
+        $middleware->handle($request, fn () => new Response('ok'));
+    }
+
     public function test_rejects_missing_signature_header(): void
     {
         $middleware = new VerifyWebhookSignatureMiddleware(new WebhookSigner(), 'secret');

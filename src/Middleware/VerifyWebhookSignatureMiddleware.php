@@ -8,6 +8,7 @@ use EzPhp\Contracts\MiddlewareInterface;
 use EzPhp\Http\RequestInterface;
 use EzPhp\Http\Response;
 use EzPhp\Http\ResponseInterface;
+use EzPhp\Webhook\WebhookException;
 use EzPhp\Webhook\WebhookSigner;
 
 /**
@@ -20,6 +21,12 @@ use EzPhp\Webhook\WebhookSigner;
  * Replay protection is opt-in: pass `$toleranceSeconds` and the sender must also supply a
  * timestamp header; the signature then covers `"{timestamp}.{body}"` and deliveries whose
  * timestamp is outside the tolerance window are rejected.
+ *
+ * An empty secret fails closed: anyone can compute an HMAC keyed with `''`, so
+ * `handle()` throws `WebhookException` for every request instead of verifying
+ * against it. The check runs per request, not in the constructor, so an
+ * application without `WEBHOOK_SECRET` still boots and only the webhook routes
+ * answer with an error (reported through the exception handler).
  *
  * @package EzPhp\Webhook\Middleware
  */
@@ -48,9 +55,15 @@ final readonly class VerifyWebhookSignatureMiddleware implements MiddlewareInter
      * @param callable         $next
      *
      * @return ResponseInterface
+     *
+     * @throws WebhookException When no signing secret is configured.
      */
     public function handle(RequestInterface $request, callable $next): ResponseInterface
     {
+        if ($this->secret === '') {
+            throw new WebhookException('Webhook signing secret is not configured (webhook.secret / WEBHOOK_SECRET); refusing to verify against an empty key.');
+        }
+
         $signature = $request->header($this->signatureHeader);
 
         if (!is_string($signature) || $signature === '') {

@@ -83,6 +83,8 @@ binds `VerifyWebhookSignatureMiddleware` with `webhook.secret`, `webhook.signatu
 
 A request with a missing or invalid signature never reaches the controller — the middleware returns `401 Unauthorized` directly.
 
+An unset or empty secret fails closed: the middleware throws `WebhookException` for every request (rendered as a 500 and reported by the exception handler) instead of verifying against the empty key, which anyone could compute. The application still boots without `WEBHOOK_SECRET`; only the protected routes refuse to work.
+
 ---
 
 ## Signing

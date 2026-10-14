@@ -286,11 +286,11 @@ tests/
 ├── TestCase.php                                 — plain PHPUnit base (identical in every package); WebhookServiceProviderTest extends EzPhp\Testing\ApplicationTestCase directly
 ├── WebhookSignerTest.php                        — sign/verify: correctness, wrong secret, tampered payload, garbage signature
 ├── WebhookDispatcherTest.php                    — Pushes onto default/configured queue, using ez-php/queue's InMemoryDriver
-├── WebhookServiceProviderTest.php               — Smoke test: all three bindings resolve
+├── WebhookServiceProviderTest.php               — Smoke test: all three bindings resolve; middleware without a secret fails closed
 ├── Job/
 │   └── DeliverWebhookJobTest.php                — handle(): signed POST via Http::fake(), custom header, non-2xx throws, retry config (maxTries/queue)
 └── Middleware/
-    └── VerifyWebhookSignatureMiddlewareTest.php — Missing header, invalid signature, valid signature, custom header name
+    └── VerifyWebhookSignatureMiddlewareTest.php — Missing header, invalid signature, valid signature, custom header name, empty secret fails closed
 ```
 
 ---
@@ -355,6 +355,7 @@ closures; `register()` never calls `make()` on another service.
 - **No dependency on `ez-php/auth`.** The signing primitive is duplicated (a few lines: `hash_hmac` + `hash_equals`) rather than importing `JwtManager`, because `JwtManager` is coupled to the JWT envelope (base64url header/payload/claims, `exp`/`iat`) that webhook signatures don't use. Depending on `ez-php/auth` for two stdlib function calls would pull in an unrelated module's full surface (`Auth`, `PersonalAccessTokenManager`, etc.) for no benefit.
 - **No subscription storage or management UI.** Applications own their own list of webhook subscribers (URL + secret pairs) and pass them into `WebhookDispatcher::dispatch()` per call. Adding a `Subscriber` entity/repository here would require picking a persistence layer (ORM vs. plain PDO), which this module deliberately leaves to the application.
 - **`VerifyWebhookSignatureMiddleware` is `final readonly`, constructed directly or resolved from the container.** Unlike `ThrottleMiddleware`'s single container-friendly configuration, applications commonly need *per-subscriber* secrets (different third parties signing with different keys) — the container binding only covers the single-secret case (`webhook.secret`); routes needing multiple secrets construct the middleware directly with `new VerifyWebhookSignatureMiddleware(...)`.
+- **An empty secret fails closed, per request.** `hash_hmac('sha256', $body, '')` is computable by anyone, so `handle()` throws `WebhookException` when `$secret === ''` instead of verifying. It deliberately does not throw from the constructor: the provider binding (and global middleware lists) resolve it even in apps that never set `WEBHOOK_SECRET`, and only the protected routes should break — loudly, through the exception handler's `report()`.
 
 ---
 
