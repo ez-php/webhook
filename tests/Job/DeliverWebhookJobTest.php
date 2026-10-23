@@ -10,7 +10,7 @@ use EzPhp\Webhook\WebhookException;
 use EzPhp\Webhook\WebhookSigner;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
-use PHPUnit\Framework\TestCase as BaseTestCase;
+use Tests\TestCase;
 
 /**
  * @package Tests\Job
@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase as BaseTestCase;
 #[CoversClass(DeliverWebhookJob::class)]
 #[UsesClass(WebhookSigner::class)]
 #[UsesClass(WebhookException::class)]
-final class DeliverWebhookJobTest extends BaseTestCase
+final class DeliverWebhookJobTest extends TestCase
 {
     protected function tearDown(): void
     {

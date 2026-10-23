@@ -11,7 +11,7 @@ use EzPhp\Webhook\WebhookException;
 use EzPhp\Webhook\WebhookSigner;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
-use PHPUnit\Framework\TestCase as BaseTestCase;
+use Tests\TestCase;
 
 /**
  * @package Tests\Middleware
@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase as BaseTestCase;
 #[CoversClass(VerifyWebhookSignatureMiddleware::class)]
 #[UsesClass(WebhookSigner::class)]
 #[UsesClass(WebhookException::class)]
-final class VerifyWebhookSignatureMiddlewareTest extends BaseTestCase
+final class VerifyWebhookSignatureMiddlewareTest extends TestCase
 {
     public function test_empty_secret_rejects_a_request_signed_with_the_empty_key(): void
     {

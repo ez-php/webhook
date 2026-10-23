@@ -9,14 +9,13 @@ use EzPhp\Webhook\Job\DeliverWebhookJob;
 use EzPhp\Webhook\WebhookDispatcher;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
-use PHPUnit\Framework\TestCase as BaseTestCase;
 
 /**
  * @package Tests
  */
 #[CoversClass(WebhookDispatcher::class)]
 #[UsesClass(DeliverWebhookJob::class)]
-final class WebhookDispatcherTest extends BaseTestCase
+final class WebhookDispatcherTest extends TestCase
 {
     public function test_dispatch_pushes_a_deliver_webhook_job_onto_the_default_queue(): void
     {

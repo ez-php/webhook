@@ -6,13 +6,12 @@ namespace Tests;
 
 use EzPhp\Webhook\WebhookSigner;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\TestCase as BaseTestCase;
 
 /**
  * @package Tests
  */
 #[CoversClass(WebhookSigner::class)]
-final class WebhookSignerTest extends BaseTestCase
+final class WebhookSignerTest extends TestCase
 {
     private WebhookSigner $signer;
 

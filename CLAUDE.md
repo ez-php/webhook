@@ -286,6 +286,7 @@ src/
 
 tests/
 ├── TestCase.php                                 — plain PHPUnit base (identical in every package); WebhookServiceProviderTest extends EzPhp\Testing\ApplicationTestCase directly
+├── WebhookProviderConfigTypesTest.php  — wrong-typed config values fall back to the defaults instead of raising a TypeError
 ├── WebhookSignerTest.php                        — sign/verify: correctness, wrong secret, tampered payload, garbage signature
 ├── WebhookDispatcherTest.php                    — Pushes onto default/configured queue, using ez-php/queue's InMemoryDriver
 ├── WebhookServiceProviderTest.php               — Smoke test: all three bindings resolve; middleware without a secret fails closed
