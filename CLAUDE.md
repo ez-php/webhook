@@ -290,6 +290,8 @@ tests/
 ├── WebhookSignerTest.php                        — sign/verify: correctness, wrong secret, tampered payload, garbage signature
 ├── WebhookDispatcherTest.php                    — Pushes onto default/configured queue, using ez-php/queue's InMemoryDriver
 ├── WebhookServiceProviderTest.php               — Smoke test: all three bindings resolve; middleware without a secret fails closed
+├── Fixtures/
+│   └── InMemoryQueueServiceProvider.php         — test-only provider binding QueueInterface to an in-memory driver
 ├── Job/
 │   └── DeliverWebhookJobTest.php                — handle(): signed POST via Http::fake(), custom header, non-2xx throws, retry config (maxTries/queue)
 └── Middleware/
