@@ -27,7 +27,7 @@
         "php": "^8.5",
         "ez-php/contracts": "^2.7.0",
         "ez-php/http": "^2.7.0",
-        "ez-php/http-client": "^2.7.0",
+        "ez-php/http-client": "^2.7.1",
         "ez-php/queue": "^2.7.0"
     },
     "require-dev": {
