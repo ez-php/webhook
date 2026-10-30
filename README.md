@@ -116,6 +116,15 @@ Both sides must agree — a timestamped sender talking to a plain receiver (or t
 
 ---
 
+## Destination URLs
+
+`DeliverWebhookJob` never follows a redirect: a 3xx counts as a failed delivery and is retried, so a
+subscriber cannot steer the worker to another host. Only `http` and `https` URLs are accepted.
+
+**Validating the URL a subscriber registers is your job.** This module does not resolve hosts or block
+private ranges, so reject `localhost`, link-local (`169.254.0.0/16`) and private addresses when the URL is
+registered, or route delivery through an egress proxy.
+
 ## What This Module Does Not Do
 
 - No subscription management UI or storage — applications own their own list of webhook subscribers/URLs/secrets and pass them to `WebhookDispatcher::dispatch()`.

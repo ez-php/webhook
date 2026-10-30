@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Job;
 
+use EzPhp\HttpClient\FakeTransport;
 use EzPhp\HttpClient\Http;
+use EzPhp\HttpClient\HttpClient;
 use EzPhp\Webhook\Job\DeliverWebhookJob;
 use EzPhp\Webhook\WebhookException;
 use EzPhp\Webhook\WebhookSigner;
@@ -66,6 +68,25 @@ final class DeliverWebhookJobTest extends TestCase
         $this->expectException(WebhookException::class);
 
         $job->handle();
+    }
+
+    public function test_handle_disables_redirects(): void
+    {
+        $fake = new FakeTransport();
+        Http::setClient(new HttpClient($fake));
+
+        (new DeliverWebhookJob('https://example.com/hook', ['event' => 'created'], 'secret'))->handle();
+
+        $this->assertFalse($fake->getRecorded()[0]['followRedirects']);
+    }
+
+    public function test_handle_treats_a_redirect_as_a_failed_delivery(): void
+    {
+        Http::fake(['*' => Http::response('', 302)]);
+
+        $this->expectException(WebhookException::class);
+
+        (new DeliverWebhookJob('https://example.com/hook', ['event' => 'created'], 'secret'))->handle();
     }
 
     public function test_default_max_tries_and_backoff_configured_for_retry(): void

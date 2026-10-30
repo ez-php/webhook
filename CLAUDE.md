@@ -312,6 +312,8 @@ keys and break verification without the data actually changing.
 
 ### DeliverWebhookJob (`src/Job/DeliverWebhookJob.php`)
 
+Sends with `withoutRedirects()`, so a 3xx is a failed delivery and the signed payload never reaches a host that was not registered. Validating registered URLs (private ranges, DNS) stays with the application.
+
 Extends `ez-php/queue`'s `Job`. Constructor takes `$url`, `$payload` (array,
 JSON-encoded at delivery time), `$secret`, an optional `$signatureHeader`
 (default `X-Webhook-Signature`), and an optional `$queue` name. `handle()`

@@ -14,8 +14,8 @@ use EzPhp\Webhook\WebhookSigner;
  *
  * Queue job that HMAC-signs a JSON payload and POSTs it to a subscriber URL.
  * Retries via the standard ez-php/queue Job mechanism (getMaxTries()); any
- * non-2xx response or transport failure throws, so the Worker re-queues the
- * job until $maxTries is exhausted.
+ * non-2xx response (a redirect included, it is never followed) or transport
+ * failure throws, so the Worker re-queues the job until $maxTries is exhausted.
  *
  * @package EzPhp\Webhook\Job
  */
@@ -60,7 +60,8 @@ final class DeliverWebhookJob extends Job
         $body = (string) json_encode($this->payload, JSON_THROW_ON_ERROR);
         $signer = new WebhookSigner();
 
-        $request = Http::post($this->url)->withHeader('Content-Type', 'application/json');
+        // No redirects: a subscriber must not be able to steer the worker to another host (SSRF).
+        $request = Http::post($this->url)->withoutRedirects()->withHeader('Content-Type', 'application/json');
 
         if ($this->timestamped) {
             // Signed per attempt, so a retry after a long backoff is not rejected as stale.
